@@ -22,6 +22,18 @@ namespace ColorCodePicker
         public MainWindow()
         {
             InitializeComponent();
+            
+            // 앱 타이틀에 버전 정보 표시
+            string currentExePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
+            string currentVer = "1.0.0";
+            if (!string.IsNullOrEmpty(currentExePath))
+            {
+                var vInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(currentExePath);
+                currentVer = vInfo.FileVersion ?? "1.0.0";
+            }
+            MainTitleBar.Title = $"Color Code Picker v{currentVer}";
+            this.Title = MainTitleBar.Title;
+
             this.Loaded += MainWindow_Loaded;
         }
 

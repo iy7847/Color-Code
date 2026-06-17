@@ -64,9 +64,9 @@ jobs:
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         
-        # 원격 main 브랜치를 가져와서 병합
+        # 원격 main 브랜치를 가져와서 로컬 변경사항을 무시하고 강제로 병합
         git fetch origin main
-        git checkout main
+        git checkout -f main
         git pull origin main
         
         # 위에서 생성/덮어쓴 appcast.xml을 다시 적용 (혹시 pull 과정에서 덮어써졌을 수 있으므로 안전을 위해)
