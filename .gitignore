@@ -1,0 +1,11 @@
+# .NET Core / WPF
+bin/
+obj/
+*.user
+
+# Custom builds
+final_*/
+
+# OS generated files
+.DS_Store
+Thumbs.db
