@@ -5,10 +5,10 @@
     <description>최신 릴리즈 정보</description>
     <language>ko</language>
     <item>
-      <title>Version 1.0.4</title>
-      <description><![CDATA[Add Release Notes parsing to GitHub Actions and custom Update UI in WPF ]]></description>
-      <pubDate>Wed, 17 Jun 2026 09:16:14 GMT</pubDate>
-      <enclosure url="https://github.com/iy7847/Color-Code/releases/download/v1.0.4/ColorCodePicker-v1.0.4.zip" sparkle:version="1.0.4" sparkle:os="windows" />
+      <title>Version 1.0.7</title>
+      <description><![CDATA[Bump version to 1.0.7 to demonstrate new UI to user ]]></description>
+      <pubDate>Wed, 17 Jun 2026 09:24:03 GMT</pubDate>
+      <enclosure url="https://github.com/iy7847/Color-Code/releases/download/v1.0.7/ColorCodePicker-v1.0.7.zip" sparkle:version="1.0.7" sparkle:os="windows" />
     </item>
   </channel>
 </rss>
