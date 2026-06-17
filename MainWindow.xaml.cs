@@ -64,62 +64,140 @@ namespace ColorCodePicker
                         var downloadUrl = latestVersion.DownloadLink;
                         var tempZip = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ColorCodePicker_Update.zip");
 
-                        var progressDialog = new Wpf.Ui.Controls.MessageBox
+                        // 진행 상태를 보여줄 커스텀 프로그레스바 윈도우 생성
+                        var updateWindow = new System.Windows.Window
                         {
-                            Title = "다운로드 중...",
-                            Content = "업데이트를 다운로드하고 있습니다. 잠시만 기다려주세요."
+                            Title = "Color Code 업데이트",
+                            Width = 450,
+                            Height = 180,
+                            WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen,
+                            ResizeMode = System.Windows.ResizeMode.NoResize,
+                            WindowStyle = System.Windows.WindowStyle.ToolWindow,
+                            Topmost = true,
+                            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(32, 32, 32)),
+                            Foreground = System.Windows.Media.Brushes.White
                         };
-                        _ = progressDialog.ShowDialogAsync();
 
-                        try
+                        var grid = new System.Windows.Controls.Grid { Margin = new System.Windows.Thickness(20) };
+                        var textBlock = new System.Windows.Controls.TextBlock 
+                        { 
+                            Text = "업데이트 파일을 다운로드하는 중입니다...\n잠시만 기다려주세요.", 
+                            VerticalAlignment = System.Windows.VerticalAlignment.Top,
+                            FontSize = 14,
+                            Foreground = System.Windows.Media.Brushes.White
+                        };
+                        var progressBar = new System.Windows.Controls.ProgressBar 
+                        { 
+                            Height = 24, 
+                            VerticalAlignment = System.Windows.VerticalAlignment.Bottom,
+                            Minimum = 0,
+                            Maximum = 100,
+                            Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 120, 215))
+                        };
+                        grid.Children.Add(textBlock);
+                        grid.Children.Add(progressBar);
+                        updateWindow.Content = grid;
+                        updateWindow.Show();
+                        
+                        string currentExePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
+
+                        _ = Task.Run(async () =>
                         {
-                            using (var client = new System.Net.Http.HttpClient())
+                            try
                             {
-                                var response = await client.GetAsync(downloadUrl);
-                                response.EnsureSuccessStatusCode();
-                                using (var fs = new System.IO.FileStream(tempZip, System.IO.FileMode.Create))
+                                using (var client = new System.Net.Http.HttpClient())
                                 {
-                                    await response.Content.CopyToAsync(fs);
+                                    using (var response = await client.GetAsync(downloadUrl, System.Net.Http.HttpCompletionOption.ResponseHeadersRead))
+                                    {
+                                        response.EnsureSuccessStatusCode();
+                                        var totalBytes = response.Content.Headers.ContentLength ?? -1L;
+                                        using (var fs = new System.IO.FileStream(tempZip, System.IO.FileMode.Create))
+                                        using (var stream = await response.Content.ReadAsStreamAsync())
+                                        {
+                                            var buffer = new byte[81920];
+                                            long totalRead = 0;
+                                            int bytesRead;
+                                            while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                                            {
+                                                await fs.WriteAsync(buffer, 0, bytesRead);
+                                                totalRead += bytesRead;
+                                                if (totalBytes != -1)
+                                                {
+                                                    var percent = (int)((double)totalRead / totalBytes * 100);
+                                                    Application.Current.Dispatcher.Invoke(() => {
+                                                        progressBar.Value = percent;
+                                                        textBlock.Text = $"다운로드 중... ({percent}%)  [ {(totalRead/1024/1024)}MB / {(totalBytes/1024/1024)}MB ]\n잠시만 기다려주세요.";
+                                                    });
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Application.Current.Dispatcher.Invoke(() => {
+                                    progressBar.IsIndeterminate = true;
+                                    textBlock.Text = "설치 파일 압축 해제 중...\n거의 다 완료되었습니다!";
+                                });
+
+                                string bakPath = currentExePath + ".bak";
+
+                                // 이전 백업 파일이 있으면 삭제
+                                if (System.IO.File.Exists(bakPath))
+                                    System.IO.File.Delete(bakPath);
+
+                                // 현재 실행 중인 파일 이름을 변경
+                                System.IO.File.Move(currentExePath, bakPath);
+
+                                Application.Current.Dispatcher.Invoke(() => {
+                                    textBlock.Text = "새 버전 적용 중...";
+                                });
+
+                                // ZIP 압축 해제 후 현재 폴더로 복사 (.NET Preview 버그 우회용 PowerShell 사용)
+                                string extractDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ColorCodePicker_Extract");
+                                if (System.IO.Directory.Exists(extractDir))
+                                    System.IO.Directory.Delete(extractDir, true);
+                                
+                                var psInfo = new System.Diagnostics.ProcessStartInfo
+                                {
+                                    FileName = "powershell.exe",
+                                    Arguments = $"-NoProfile -Command \"Expand-Archive -Force -Path '{tempZip}' -DestinationPath '{extractDir}'\"",
+                                    UseShellExecute = true,
+                                    CreateNoWindow = true,
+                                    WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
+                                };
+                                var ps = System.Diagnostics.Process.Start(psInfo);
+                                ps?.WaitForExit();
+                                
+                                string newExe = System.IO.Directory.GetFiles(extractDir, "*.exe").FirstOrDefault() ?? "";
+                                if (!string.IsNullOrEmpty(newExe))
+                                {
+                                    System.IO.File.Copy(newExe, currentExePath, true);
+                                    
+                                    Application.Current.Dispatcher.Invoke(() =>
+                                    {
+                                        updateWindow.Close();
+                                        // 새 버전 실행
+                                        System.Diagnostics.Process.Start(currentExePath);
+                                        // 현재 앱 종료
+                                        Application.Current.Shutdown();
+                                    });
+                                }
+                                else
+                                {
+                                    throw new Exception("압축 파일 안에 실행 파일(.exe)을 찾을 수 없습니다.");
                                 }
                             }
-
-                            progressDialog.Close();
-
-                            // 현재 실행 파일 경로 찾기
-                            string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
-                            string bakPath = exePath + ".bak";
-
-                            // 이전 백업 파일이 있으면 삭제
-                            if (System.IO.File.Exists(bakPath))
-                                System.IO.File.Delete(bakPath);
-
-                            // 현재 실행 중인 파일 이름을 변경 (Windows는 실행 중인 파일의 이름 변경을 허용함)
-                            System.IO.File.Move(exePath, bakPath);
-
-                            // ZIP 압축 해제 후 현재 폴더로 복사
-                            string extractDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ColorCodePicker_Extract");
-                            if (System.IO.Directory.Exists(extractDir))
-                                System.IO.Directory.Delete(extractDir, true);
-                            
-                            System.IO.Compression.ZipFile.ExtractToDirectory(tempZip, extractDir);
-                            
-                            string newExe = System.IO.Directory.GetFiles(extractDir, "*.exe").FirstOrDefault() ?? "";
-                            if (!string.IsNullOrEmpty(newExe))
+                            catch (Exception ex)
                             {
-                                System.IO.File.Copy(newExe, exePath, true);
-                                
-                                // 새 버전 실행
-                                System.Diagnostics.Process.Start(exePath);
-                                
-                                // 현재 앱 종료
-                                Application.Current.Shutdown();
+                                string logPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ColorCodePicker_UpdateError.txt");
+                                System.IO.File.WriteAllText(logPath, ex.ToString());
+                                Application.Current.Dispatcher.Invoke(() =>
+                                {
+                                    updateWindow.Close();
+                                    System.Windows.MessageBox.Show("업데이트 중 오류가 발생했습니다:\n" + ex.Message + "\n\n자세한 로그가 다음 경로에 저장되었습니다:\n" + logPath, "오류", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                                });
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            progressDialog.Close();
-                            System.Windows.MessageBox.Show("업데이트 중 오류가 발생했습니다: " + ex.Message);
-                        }
+                        });
                     }
                 }
             }
