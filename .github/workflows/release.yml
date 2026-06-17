@@ -60,9 +60,37 @@ jobs:
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # 원격 main 브랜치를 가져와서 병합
+        git fetch origin main
+        git checkout main
+        git pull origin main
+        
+        # 위에서 생성/덮어쓴 appcast.xml을 다시 적용 (혹시 pull 과정에서 덮어써졌을 수 있으므로 안전을 위해)
+        $version = $env:VERSION
+        $date = (Get-Date).ToUniversalTime().ToString("r")
+        $url = "https://github.com/iy7847/Color-Code/releases/download/$env:GITHUB_REF_NAME/$env:ZIP_NAME"
+        
+        $xml = @"
+        <?xml version="1.0" encoding="utf-8"?>
+        <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+          <channel>
+            <title>Color Code Picker</title>
+            <description>최신 릴리즈 정보</description>
+            <language>ko</language>
+            <item>
+              <title>Version $version</title>
+              <pubDate>$date</pubDate>
+              <enclosure url="$url" sparkle:version="$version" sparkle:os="windows" />
+            </item>
+          </channel>
+        </rss>
+        "@
+        Set-Content -Path appcast.xml -Value $xml -Encoding UTF8
+
         git add appcast.xml
         git commit -m "Update appcast.xml for release $env:GITHUB_REF_NAME"
-        git push origin HEAD:main
+        git push origin main
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
