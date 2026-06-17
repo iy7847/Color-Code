@@ -49,16 +49,99 @@ namespace ColorCodePicker
                 if (updateInfo.Status == NetSparkleUpdater.Enums.UpdateStatus.UpdateAvailable && updateInfo.Updates.Count > 0)
                 {
                     var latestVersion = updateInfo.Updates[0];
-                    var dialog = new Wpf.Ui.Controls.MessageBox
+                    
+                    // 새 업데이트 알림을 위한 커스텀 창 생성 (업데이트 내역 포함)
+                    var promptWindow = new System.Windows.Window
                     {
-                        Title = "✨ 소프트웨어 업데이트 알림",
-                        Content = $"새로운 버전(v{latestVersion.Version})이 릴리즈되었습니다!\n\n최신 기능 적용과 안정성 향상을 위해 지금 바로 업데이트하시는 것을 권장합니다.\n\n업데이트를 다운로드하시겠습니까?",
-                        PrimaryButtonText = "지금 업데이트",
-                        CloseButtonText = "나중에"
+                        Title = "새로운 업데이트 알림",
+                        Width = 450,
+                        Height = 320,
+                        WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen,
+                        ResizeMode = System.Windows.ResizeMode.NoResize,
+                        WindowStyle = System.Windows.WindowStyle.ToolWindow,
+                        Topmost = true,
+                        Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(32, 32, 32)),
+                        Foreground = System.Windows.Media.Brushes.White
                     };
 
-                    var result = await dialog.ShowDialogAsync();
-                    if (result == Wpf.Ui.Controls.MessageBoxResult.Primary)
+                    var stackPanel = new System.Windows.Controls.StackPanel { Margin = new System.Windows.Thickness(20) };
+                    
+                    var titleText = new System.Windows.Controls.TextBlock 
+                    { 
+                        Text = $"🎉 새 업데이트(v{latestVersion.Version})가 출시되었습니다!", 
+                        FontSize = 16, 
+                        FontWeight = System.Windows.FontWeights.Bold,
+                        Margin = new System.Windows.Thickness(0, 0, 0, 15)
+                    };
+                    
+                    var notesLabel = new System.Windows.Controls.TextBlock 
+                    { 
+                        Text = "업데이트 내용:", 
+                        FontSize = 13, 
+                        Margin = new System.Windows.Thickness(0, 0, 0, 5),
+                        Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(200, 200, 200))
+                    };
+                    
+                    var notesBox = new System.Windows.Controls.TextBox 
+                    { 
+                        Text = string.IsNullOrWhiteSpace(latestVersion.Description) ? "업데이트 내역이 제공되지 않았습니다." : latestVersion.Description.Trim(),
+                        IsReadOnly = true,
+                        TextWrapping = System.Windows.TextWrapping.Wrap,
+                        VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                        Height = 120,
+                        Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(45, 45, 45)),
+                        Foreground = System.Windows.Media.Brushes.White,
+                        BorderThickness = new System.Windows.Thickness(1),
+                        BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(80, 80, 80)),
+                        Padding = new System.Windows.Thickness(10)
+                    };
+
+                    var btnPanel = new System.Windows.Controls.StackPanel 
+                    { 
+                        Orientation = System.Windows.Controls.Orientation.Horizontal, 
+                        HorizontalAlignment = System.Windows.Controls.HorizontalAlignment.Right,
+                        Margin = new System.Windows.Thickness(0, 20, 0, 0)
+                    };
+                    
+                    bool isUpdateAccepted = false;
+                    
+                    var btnUpdate = new System.Windows.Controls.Button 
+                    { 
+                        Content = "지금 업데이트", 
+                        Width = 120, 
+                        Height = 32, 
+                        Margin = new System.Windows.Thickness(0, 0, 10, 0),
+                        Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 120, 215)),
+                        Foreground = System.Windows.Media.Brushes.White,
+                        BorderThickness = new System.Windows.Thickness(0),
+                        Cursor = System.Windows.Input.Cursors.Hand
+                    };
+                    btnUpdate.Click += (s, e) => { isUpdateAccepted = true; promptWindow.Close(); };
+                    
+                    var btnCancel = new System.Windows.Controls.Button 
+                    { 
+                        Content = "나중에", 
+                        Width = 80, 
+                        Height = 32,
+                        Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 70, 70)),
+                        Foreground = System.Windows.Media.Brushes.White,
+                        BorderThickness = new System.Windows.Thickness(0),
+                        Cursor = System.Windows.Input.Cursors.Hand
+                    };
+                    btnCancel.Click += (s, e) => { promptWindow.Close(); };
+
+                    btnPanel.Children.Add(btnUpdate);
+                    btnPanel.Children.Add(btnCancel);
+                    
+                    stackPanel.Children.Add(titleText);
+                    stackPanel.Children.Add(notesLabel);
+                    stackPanel.Children.Add(notesBox);
+                    stackPanel.Children.Add(btnPanel);
+                    
+                    promptWindow.Content = stackPanel;
+                    promptWindow.ShowDialog();
+
+                    if (isUpdateAccepted)
                     {
                         // 윈도우 UI 다크테마 적용 대신 자체 다운로더 및 업데이트 로직 실행
                         var downloadUrl = latestVersion.DownloadLink;
