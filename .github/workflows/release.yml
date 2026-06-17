@@ -39,6 +39,8 @@ jobs:
         $date = (Get-Date).ToUniversalTime().ToString("r")
         $url = "https://github.com/iy7847/Color-Code/releases/download/$env:GITHUB_REF_NAME/$env:ZIP_NAME"
         
+        $releaseNotes = git log -1 --pretty=%B
+        
         $xml = @"
         <?xml version="1.0" encoding="utf-8"?>
         <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
@@ -48,6 +50,7 @@ jobs:
             <language>ko</language>
             <item>
               <title>Version $version</title>
+              <description><![CDATA[$releaseNotes]]></description>
               <pubDate>$date</pubDate>
               <enclosure url="$url" sparkle:version="$version" sparkle:os="windows" />
             </item>
@@ -71,6 +74,8 @@ jobs:
         $date = (Get-Date).ToUniversalTime().ToString("r")
         $url = "https://github.com/iy7847/Color-Code/releases/download/$env:GITHUB_REF_NAME/$env:ZIP_NAME"
         
+        $releaseNotes = git log -1 --pretty=%B
+        
         $xml = @"
         <?xml version="1.0" encoding="utf-8"?>
         <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
@@ -80,6 +85,7 @@ jobs:
             <language>ko</language>
             <item>
               <title>Version $version</title>
+              <description><![CDATA[$releaseNotes]]></description>
               <pubDate>$date</pubDate>
               <enclosure url="$url" sparkle:version="$version" sparkle:os="windows" />
             </item>
