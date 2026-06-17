@@ -25,21 +25,103 @@ namespace ColorCodePicker
             this.Loaded += MainWindow_Loaded;
         }
 
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             try
             {
+                // 이전 버전 업데이트 백업 파일 자동 정리
+                string currentExe = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
+                string backupExe = currentExe + ".bak";
+                if (System.IO.File.Exists(backupExe))
+                {
+                    try { System.IO.File.Delete(backupExe); } catch { }
+                }
+
                 // GitHub Releases 자동 업데이트 설정 (NetSparkleUpdater)
-                // 참고: 실제 배포 시에는 appcast.xml 경로와 Public Key를 정확히 세팅해야 합니다.
                 string appcastUrl = "https://raw.githubusercontent.com/iy7847/Color-Code/main/appcast.xml";
                 _sparkle = new SparkleUpdater(appcastUrl, new Ed25519Checker(SecurityMode.Unsafe))
                 {
                     UIFactory = new NetSparkleUpdater.UI.WPF.UIFactory()
                 };
-                
-                // 앱 실행 시 백그라운드에서 업데이트 확인
-                _sparkle.StartLoop(true, true);
 
+                // 조용히 업데이트 확인
+                var updateInfo = await _sparkle.CheckForUpdatesQuietly();
+                if (updateInfo.Status == NetSparkleUpdater.Enums.UpdateStatus.UpdateAvailable && updateInfo.Updates.Count > 0)
+                {
+                    var latestVersion = updateInfo.Updates[0];
+                    var dialog = new Wpf.Ui.Controls.MessageBox
+                    {
+                        Title = "✨ 소프트웨어 업데이트 알림",
+                        Content = $"새로운 버전(v{latestVersion.Version})이 릴리즈되었습니다!\n\n최신 기능 적용과 안정성 향상을 위해 지금 바로 업데이트하시는 것을 권장합니다.\n\n업데이트를 다운로드하시겠습니까?",
+                        PrimaryButtonText = "지금 업데이트",
+                        CloseButtonText = "나중에"
+                    };
+
+                    var result = await dialog.ShowDialogAsync();
+                    if (result == Wpf.Ui.Controls.MessageBoxResult.Primary)
+                    {
+                        // 윈도우 UI 다크테마 적용 대신 자체 다운로더 및 업데이트 로직 실행
+                        var downloadUrl = latestVersion.DownloadLink;
+                        var tempZip = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ColorCodePicker_Update.zip");
+
+                        var progressDialog = new Wpf.Ui.Controls.MessageBox
+                        {
+                            Title = "다운로드 중...",
+                            Content = "업데이트를 다운로드하고 있습니다. 잠시만 기다려주세요."
+                        };
+                        _ = progressDialog.ShowDialogAsync();
+
+                        try
+                        {
+                            using (var client = new System.Net.Http.HttpClient())
+                            {
+                                var response = await client.GetAsync(downloadUrl);
+                                response.EnsureSuccessStatusCode();
+                                using (var fs = new System.IO.FileStream(tempZip, System.IO.FileMode.Create))
+                                {
+                                    await response.Content.CopyToAsync(fs);
+                                }
+                            }
+
+                            progressDialog.Close();
+
+                            // 현재 실행 파일 경로 찾기
+                            string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
+                            string bakPath = exePath + ".bak";
+
+                            // 이전 백업 파일이 있으면 삭제
+                            if (System.IO.File.Exists(bakPath))
+                                System.IO.File.Delete(bakPath);
+
+                            // 현재 실행 중인 파일 이름을 변경 (Windows는 실행 중인 파일의 이름 변경을 허용함)
+                            System.IO.File.Move(exePath, bakPath);
+
+                            // ZIP 압축 해제 후 현재 폴더로 복사
+                            string extractDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ColorCodePicker_Extract");
+                            if (System.IO.Directory.Exists(extractDir))
+                                System.IO.Directory.Delete(extractDir, true);
+                            
+                            System.IO.Compression.ZipFile.ExtractToDirectory(tempZip, extractDir);
+                            
+                            string newExe = System.IO.Directory.GetFiles(extractDir, "*.exe").FirstOrDefault() ?? "";
+                            if (!string.IsNullOrEmpty(newExe))
+                            {
+                                System.IO.File.Copy(newExe, exePath, true);
+                                
+                                // 새 버전 실행
+                                System.Diagnostics.Process.Start(exePath);
+                                
+                                // 현재 앱 종료
+                                Application.Current.Shutdown();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            progressDialog.Close();
+                            System.Windows.MessageBox.Show("업데이트 중 오류가 발생했습니다: " + ex.Message);
+                        }
+                    }
+                }
             }
             catch (Exception)
             {
