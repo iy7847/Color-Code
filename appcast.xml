@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Color Code Picker</title>
+    <description>최신 릴리즈 정보</description>
+    <language>ko</language>
+    <item>
+      <title>Version 1.0.1</title>
+      <pubDate>Wed, 17 Jun 2026 08:30:54 GMT</pubDate>
+      <enclosure url="https://github.com/iy7847/Color-Code/releases/download/v1.0.1/ColorCodePicker-v1.0.1.zip" sparkle:version="1.0.1" sparkle:os="windows" />
+    </item>
+  </channel>
+</rss>
