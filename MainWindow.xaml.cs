@@ -99,7 +99,7 @@ namespace ColorCodePicker
                     var btnPanel = new System.Windows.Controls.StackPanel 
                     { 
                         Orientation = System.Windows.Controls.Orientation.Horizontal, 
-                        HorizontalAlignment = System.Windows.Controls.HorizontalAlignment.Right,
+                        HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
                         Margin = new System.Windows.Thickness(0, 20, 0, 0)
                     };
                     
