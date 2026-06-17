@@ -50,6 +50,22 @@ namespace ColorCodePicker
                 {
                     var latestVersion = updateInfo.Updates[0];
                     
+                    // .NET 8 단일 파일 배포 환경에서 NetSparkle이 현재 버전을 제대로 인식하지 못하는 버그 우회
+                    string currentExeForVersion = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
+                    if (!string.IsNullOrEmpty(currentExeForVersion))
+                    {
+                        var versionInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(currentExeForVersion);
+                        string currentVersionStr = versionInfo.FileVersion ?? "0.0.0.0";
+                        if (Version.TryParse(currentVersionStr, out Version currentV) && Version.TryParse(latestVersion.Version, out Version latestV))
+                        {
+                            if (latestV <= currentV)
+                            {
+                                // 서버 버전이 현재 버전과 같거나 낮으면 업데이트 루프를 방지하기 위해 무시
+                                return;
+                            }
+                        }
+                    }
+                    
                     // 새 업데이트 알림을 위한 커스텀 창 생성 (업데이트 내역 포함)
                     var promptWindow = new System.Windows.Window
                     {
